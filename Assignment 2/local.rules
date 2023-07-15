@@ -1,0 +1,41 @@
+iptables -P INPUT DROP
+iptables -A INPUT -p udp --sport domain -i ens37 -j ACCEPT
+iptables -A INPUT -p tcp --dport ssh -s 192.168.10.0/24 -i ens36 -j ACCEPT
+iptables -A INPUT -p tcp --dport ssh -s vpn.dmz.sti.pt -i ens34 -j ACCEPT
+iptables -P FORWARD DROP
+iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -d dns.dmz.sti.pt -o ens34 -p udp --dport domain -j ACCEPT
+iptables -A FORWARD -s dns.dmz.sti.pt -i ens34 -o ens37 -p udp --dport domain -j ACCEPT
+iptables -A FORWARD -s dns.dmz.sti.pt -i ens34 -d dns2.internet.pt -o ens37 -p tcp --dport domain -j ACCEPT
+iptables -A FORWARD -s dns2.internet.pt -i ens37 -d dns.dmz.sti.pt -o ens34 -p tcp --dport domain -j ACCEPT
+iptables -A FORWARD -d smtp.dmz.sti.pt -o ens34 -p tcp --dport smtp -j ACCEPT
+iptables -A FORWARD -d mail.dmz.sti.pt -o ens34 -p tcp --dport imap2 -j ACCEPT
+iptables -A FORWARD -d mail.dmz.sti.pt -o ens34 -p tcp --dport pop3 -j ACCEPT
+iptables -A FORWARD -d www.dmz.sti.pt -o ens34 -p tcp --dport http -j ACCEPT
+iptables -A FORWARD -d www.dmz.sti.pt -o ens34 -p tcp --dport 443 -j ACCEPT
+iptables -A FORWARD -d vpn.dmz.sti.pt -o ens34 -p tcp --dport openvpn -j ACCEPT
+iptables -A FORWARD -s vpn.dmz.sti.pt -d 192.168.10.0/24 -i ens34 -o ens36 -p tcp -j ACCEPT
+iptables -A FORWARD -d ftp.internal.sti.pt -i ens37 -o ens36 -p tcp --dport ftp -j ACCEPT
+iptables -t nat -A PREROUTING -d 193.137.16.254 -i ens37 -p tcp --sport ftp-data -j DNAT --to-destination 192.168.10.2
+modprobe ip_conntrack_ftp
+iptables -A FORWARD -d datastore.internal.sti.pt -s dns2.internet.pt -i ens37 -o ens36 -p tcp --dport ssh -j ACCEPT 
+iptables -A FORWARD -d datastore.internal.sti.pt -s eden.internet.pt -i ens37 -o ens36 -p tcp --dport ssh -j ACCEPT
+iptables -t nat -A PREROUTING -d 193.137.16.254 -i ens37 -p tcp --dport ssh -j DNAT --to-destination 192.168.10.3
+iptables -A FORWARD -d dns2.internet.pt -s 192.168.10.0/24 -i ens36 -o ens37 -p udp --dport domain -j ACCEPT 
+iptables -t nat -A POSTROUTING -o ens37 -p udp --dport domain -j SNAT --to-source 193.137.16.254 
+iptables -A FORWARD -d 193.137.16.0/24 -s 192.168.10.0/24 -i ens36 -o ens37 -p tcp --dport http -j ACCEPT 
+iptables -A FORWARD -d 193.137.16.0/24 -s 192.168.10.0/24 -i ens36 -o ens37 -p tcp --dport 443 -j ACCEPT
+iptables -A FORWARD -d 193.137.16.0/24 -s 192.168.10.0/24 -i ens36 -o ens37 -p tcp --dport ssh -j ACCEPT
+iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -o ens37 -p tcp --dport http -j SNAT --to-source 193.137.16.254 
+iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -o ens37 -p tcp --dport 443 -j SNAT --to-source 193.137.16.254 
+iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -o ens37 -p tcp --dport ssh -j SNAT --to-source 193.137.16.254 
+iptables -t nat -A POSTROUTING -o ens37 -p tcp --dport ftp -j SNAT --to-source 193.137.16.254 
+iptables -A FORWARD -d 192.168.10.0/24 -i ens36 -o ens37 -p tcp --sport ftp-data -j ACCEPT
+iptables -A INPUT -j NFQUEUE --queue-num 0
+iptables -A FORWARD -j NFQUEUE --queue-num 0
+
+
+
+
+
+
